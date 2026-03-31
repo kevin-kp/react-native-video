@@ -569,17 +569,22 @@ public class ReactExoplayerView extends FrameLayout implements
                     config.getMinBufferMs() != BufferConfig.Companion.getBufferConfigPropUnsetInt()
                             ? config.getMinBufferMs()
                             : DefaultLoadControl.DEFAULT_MIN_BUFFER_MS,
+                    DefaultLoadControl.DEFAULT_MIN_BUFFER_FOR_LOCAL_PLAYBACK_MS,
                     config.getMaxBufferMs() != BufferConfig.Companion.getBufferConfigPropUnsetInt()
                             ? config.getMaxBufferMs()
                             : DefaultLoadControl.DEFAULT_MAX_BUFFER_MS,
+                    DefaultLoadControl.DEFAULT_MAX_BUFFER_FOR_LOCAL_PLAYBACK_MS,
                     config.getBufferForPlaybackMs() != BufferConfig.Companion.getBufferConfigPropUnsetInt()
                             ? config.getBufferForPlaybackMs()
                             : DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS ,
+                    DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_FOR_LOCAL_PLAYBACK_MS,
                     config.getBufferForPlaybackAfterRebufferMs() != BufferConfig.Companion.getBufferConfigPropUnsetInt()
                             ? config.getBufferForPlaybackAfterRebufferMs()
                             : DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS,
+                    DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_FOR_LOCAL_PLAYBACK_MS,
                     -1,
                     true,
+                    DefaultLoadControl.DEFAULT_PRIORITIZE_TIME_OVER_SIZE_THRESHOLDS_FOR_LOCAL_PLAYBACK,
                     config.getBackBufferDurationMs() != BufferConfig.Companion.getBufferConfigPropUnsetInt()
                             ? config.getBackBufferDurationMs()
                             : DefaultLoadControl.DEFAULT_BACK_BUFFER_DURATION_MS,
@@ -593,13 +598,13 @@ public class ReactExoplayerView extends FrameLayout implements
         }
 
         @Override
-        public boolean shouldContinueLoading(long playbackPositionUs, long bufferedDurationUs, float playbackSpeed) {
+        public boolean shouldContinueLoading(@NonNull Parameters parameters) {
             if (bufferingStrategy == BufferingStrategy.BufferingStrategyEnum.DisableBuffering) {
                 return false;
             } else if (bufferingStrategy == BufferingStrategy.BufferingStrategyEnum.DependingOnMemory) {
                 // The goal of this algorithm is to pause video loading (increasing the buffer)
                 // when available memory on device become low.
-                int loadedBytes = getAllocator().getTotalBytesAllocated();
+                int loadedBytes = getAllocator(parameters.playerId).getTotalBytesAllocated();
                 boolean isHeapReached = availableHeapInBytes > 0 && loadedBytes >= availableHeapInBytes;
                 if (isHeapReached) {
                     return false;
@@ -610,7 +615,7 @@ public class ReactExoplayerView extends FrameLayout implements
                         ? source.getBufferConfig().getMinBufferMemoryReservePercent()
                         : ReactExoplayerView.DEFAULT_MIN_BUFFER_MEMORY_RESERVE;
                 long reserveMemory = (long) minBufferMemoryReservePercent * runtime.maxMemory();
-                long bufferedMs = bufferedDurationUs / (long) 1000;
+                long bufferedMs = parameters.bufferedDurationUs / (long) 1000;
                 if (reserveMemory > freeMemory && bufferedMs > 2000) {
                     // We don't have enough memory in reserve so we stop buffering to allow other components to use it instead
                     return false;
@@ -622,7 +627,7 @@ public class ReactExoplayerView extends FrameLayout implements
                 }
             }
             // "default" case or normal case for "DependingOnMemory"
-            return super.shouldContinueLoading(playbackPositionUs, bufferedDurationUs, playbackSpeed);
+            return super.shouldContinueLoading(parameters);
         }
     }
 
